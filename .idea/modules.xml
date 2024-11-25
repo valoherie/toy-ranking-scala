@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/utopia-toy-ranking.iml" filepath="$PROJECT_DIR$/.idea/modules/utopia-toy-ranking.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/toy-ranking.iml" filepath="$PROJECT_DIR$/.idea/modules/toy-ranking.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/utopia-toy-ranking-build.iml" filepath="$PROJECT_DIR$/.idea/modules/utopia-toy-ranking-build.iml" />
     </modules>
   </component>
