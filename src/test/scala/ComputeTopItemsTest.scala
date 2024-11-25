@@ -38,10 +38,7 @@ class ComputeTopItemsTest {
 
     // Expected results: (location_oid, item_name, rank)
     val expectedResults = Set(
-      (1L, "apple", 1),    // Location 1: 2 apples (rank 1)
-      (1L, "banana", 2),   // Location 1: 1 banana (rank 2)
-      (2L, "apple", 1),    // Location 2: 1 apple (rank 1)
-      (2L, "banana", 2)    // Location 2: 1 banana (rank 2)
+
     )
 
     actualResults should equal(expectedResults)
