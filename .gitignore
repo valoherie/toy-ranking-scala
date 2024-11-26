@@ -1,0 +1,21 @@
+# sbt
+target/
+project/target/
+project/project/
+.bsp/
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# VSCode
+.vscode/
+.metals/
+.bloop/
+
+# Misc
+*.class
+*.log
