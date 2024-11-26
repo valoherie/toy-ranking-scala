@@ -1,8 +1,8 @@
 import org.apache.spark.rdd.RDD
 
-object ComputeTopItems extends App {
+object ComputeTopItems {
 
-    def compute(args: Array[String]): Unit = {
+    def main(args: Array[String]): Unit = {
       val inputPath1 = args(0)
       val inputPath2 = args(1)
       val outputPath = args(2)

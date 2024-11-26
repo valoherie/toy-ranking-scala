@@ -1,9 +1,10 @@
 import com.topitems.models.Output
-import com.topitems.utils.SparkContextWrapper
+import com.topitems.utils.SkewProcessConfig
+import com.topitems.utils.SparkWrapper
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-class ProcessTopItems() extends SparkContextWrapper {
+class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) extends SparkWrapper {
   def run(
            parquet1: String,
            parquet2: String,
@@ -35,7 +36,7 @@ class ProcessTopItems() extends SparkContextWrapper {
       val results = if (isSkewHandling) {
         processTopItemsRDD(df1RDD, df2RDD, topX)
       } else {
-       processSkewedTopItems(df1RDD, df2RDD, topX)
+        processSkewedTopItems(df1RDD, df2RDD, topX)
       }
 
       val topItems = results.map(row => Output(row._1, row._2, row._3))
@@ -53,13 +54,10 @@ class ProcessTopItems() extends SparkContextWrapper {
 
   private def processTopItemsRDD(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
     //remove duplicates
-    val uniqueDetectionRDD = data1
-      .map(detection => (detection._3, detection))
-      .reduceByKey((_, value) => value)
-      .values
+    val uniqueDetectionRDD = removeDuplicatedDetection(data1)
 
     //count items by location
-    val countItemsByLocation = removeDuplicatedDetection(data1)
+    val countItemsByLocation = uniqueDetectionRDD
       .map(record => ((record._1, record._4), 1)) // (_1 is geographical_location_oid, _4 is item_name)
       .reduceByKey(_ + _)
       .map { case ((location, itemName), count) => (location, (itemName, count)) }
@@ -74,10 +72,9 @@ class ProcessTopItems() extends SparkContextWrapper {
   }
 
   private def processSkewedTopItems(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
-    //remove duplicates
     val uniqueDetectionRDD = removeDuplicatedDetection(data1)
-                             .persist(StorageLevel.MEMORY_AND_DISK)
-    //count items by location
+      .persist(StorageLevel.MEMORY_AND_DISK)
+
     val countLocation = uniqueDetectionRDD
       .map(record => (record._1, 1))
       .reduceByKey(_ + _)
@@ -85,48 +82,63 @@ class ProcessTopItems() extends SparkContextWrapper {
 
     //find skewed keys
     val skewedKeys = countLocation
-      .filter(_._2 > 5)
+      .filter(_._2 > skewConfig.skewThreshold)
       .keys.toSet
 
-    //partioning
-    val (skewedData, unskewedData) = countLocation
-      .partition(record => skewedKeys.contains(record._1))
+    val (skewedData, unskewedData) = uniqueDetectionRDD
+      .map(record => (record._1, record._4))
+      .partitionBySkewedKeys(skewedKeys)
 
     val processedUnskewedData = unskewedData
 
     // Handle skewed data with salting
     val processedSkewedData = if (!skewedData.isEmpty()) {
       skewedData.flatMap { case (location, item) =>
-        // Add salt to skewed keys
-        (0 until saltFactor).map { salt =>
-          ((location, salt), item)
+        // Add salt to skewed
+        (0 until skewConfig.saltFactor).map { salt => ((location, salt), item) }
+      }.groupByKey()
+        .flatMap { case ((location, _), item) =>
+          item.map(item => (location, item))
         }
-      }
-        .groupByKey()
-        .map { case ((location, _), item) =>
-          (location, item)
-        }
-    }  else {
+    } else {
       uniqueDetectionRDD.sparkContext.emptyRDD[(Long, String)]
     }
 
-    val results = processedUnskewedData.union(skewedProcessed)
+    val results = processedUnskewedData.union(processedSkewedData)
 
     //get top x items
-    results
+    val finalResults =
+      results
       .groupByKey()
-      .flatMapValues(_.toList.sortBy(-_._2).take(topX)) //sort by count
-      .map { case (location, (item, count)) =>
-        (location, item, count)
-      }
+      .flatMapValues( record =>
+        record
+          .toList
+          .groupBy(identity)
+          .mapValues(_.size)
+          .toList
+          .sortBy(-_._2)
+          .take(topX)
+      )
+          .map { case (location, (item, count)) =>
+            (location, item, count)
+          }
 
     uniqueDetectionRDD.unpersist()
+    finalResults
   }
 
-  private def removeDuplicatedDetection(data1: RDD[(Long, Long, Long, String, Long)]): RDD[(Long, Long, Long, String, Long)] = {
+   def removeDuplicatedDetection(data1: RDD[(Long, Long, Long, String, Long)]): RDD[(Long, Long, Long, String, Long)] = {
     data1
       .map(detection => (detection._3, detection))
       .reduceByKey((_, value) => value)
       .values
+  }
+
+  private implicit class SkewedPartitioning(data: RDD[(Long, String)]) {
+    def partitionBySkewedKeys(skewedKeys: Set[Long]): (RDD[(Long, String)], RDD[(Long, String)]) = {
+      val skewedData = data.filter { case (location, _) => skewedKeys.contains(location) }
+      val unskewedData = data.filter { case (location, _) => !skewedKeys.contains(location) }
+      (skewedData, unskewedData)
+    }
   }
 }
