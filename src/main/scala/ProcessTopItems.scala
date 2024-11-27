@@ -111,6 +111,7 @@ class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) exten
       uniqueDetectionRDD.sparkContext.emptyRDD[(Long, String)]
     }
 
+
     val results = processedUnskewedData.union(processedSkewedData)
 
     //get top x items

@@ -19,10 +19,15 @@ trait SparkWrapper {
 
 object SparkWrapper {
   private def createSparkSession(): SparkSession = {
-    SparkSession.builder()
+    var builder = SparkSession.builder()
       .appName("ComputeTopItems")
       // Set master in dev/test environments
       .master( "local[*]")
-      .getOrCreate()
+
+    SparkConfig.getSparkConfigs.foreach { case (key, value) =>
+      builder.config(key, value)
+    }
+
+    builder.getOrCreate()
   }
 }

@@ -69,6 +69,20 @@ class IntegrationTest extends AnyFunSuite with SparkWrapper {
 
 
       assert(results.length == 3)
+
+      // Verify location 1 results
+      val location1Results = results.filter(_._1 == 1L)
+      assert(location1Results.length == 2)
+      assert(location1Results(0)._2 == "Barbie Doll")
+      assert(location1Results(0)._3 == 1)
+
+      assert(location1Results(1)._2 == "Labubu")
+      assert(location1Results(1)._3 == 1)
+
+      // Verify location 2 results
+      val location2Results = results.filter(_._1 == 2L)
+      assert(location2Results.length == 1)
+      assert(location2Results(0)._2 == "Toy Car")
     }
   }
 
