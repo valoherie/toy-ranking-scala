@@ -52,7 +52,7 @@ class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) exten
     }
   }
 
-  private def processTopItemsRDD(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
+   def processTopItemsRDD(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
     //remove duplicates
     val uniqueDetectionRDD = removeDuplicatedDetection(data1)
 
@@ -65,14 +65,21 @@ class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) exten
     //get top x items
     countItemsByLocation
       .groupByKey()
-      .flatMapValues(_.toList.sortBy(-_._2).take(topX)) //sort by count
+      .flatMapValues(items =>
+        items.toList
+          .sortBy(x => (-x._2, x._1))
+          .take(topX)
+      )
       .map { case (location, (item, count)) =>
         (location, item, count)
       }
   }
 
-  private def processSkewedTopItems(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
-    val uniqueDetectionRDD = removeDuplicatedDetection(data1)
+   def processSkewedTopItems(data1: RDD[(Long, Long, Long, String, Long)], data2: RDD[(Long, String)], topX: Int): RDD[(Long, String, Int)] = {
+     val skewThreshold = skewConfig.skewThreshold
+     val saltFactor = skewConfig.saltFactor
+
+     val uniqueDetectionRDD = removeDuplicatedDetection(data1)
       .persist(StorageLevel.MEMORY_AND_DISK)
 
     val countLocation = uniqueDetectionRDD
@@ -82,7 +89,7 @@ class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) exten
 
     //find skewed keys
     val skewedKeys = countLocation
-      .filter(_._2 > skewConfig.skewThreshold)
+      .filter(_._2 > skewThreshold)
       .keys.toSet
 
     val (skewedData, unskewedData) = uniqueDetectionRDD
@@ -95,7 +102,7 @@ class ProcessTopItems(skewConfig: SkewProcessConfig = SkewProcessConfig()) exten
     val processedSkewedData = if (!skewedData.isEmpty()) {
       skewedData.flatMap { case (location, item) =>
         // Add salt to skewed
-        (0 until skewConfig.saltFactor).map { salt => ((location, salt), item) }
+        (0 until saltFactor).map { salt => ((location, salt), item) }
       }.groupByKey()
         .flatMap { case ((location, _), item) =>
           item.map(item => (location, item))
