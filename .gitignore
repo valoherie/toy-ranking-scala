@@ -21,4 +21,6 @@ project/resources/
 *.class
 *.log
 /lib/
-/resources/
+/resources/inputFile1/
+/resources/inputFile2/
+/resources/logs/
