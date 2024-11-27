@@ -20,3 +20,5 @@ project/resources/
 # Misc
 *.class
 *.log
+/lib/
+/resources/
