@@ -2,10 +2,6 @@
 
 A Spark application for processing and analyzing top items across locations, with optional data skew handling.
 
-This application processes Parquet files containing detection data and location information to identify top items per location. It supports two processing strategies:
-- Normal Processing: Standard RDD operations
-- Skewed Processing: Handles data skew using salting technique
-
 # Requirements
 
 - Apache Spark 3.2.0+
@@ -15,11 +11,28 @@ This application processes Parquet files containing detection data and location 
 - Scala Test 2.12+
 
 # Building
-
+SBT:
 ```bash
-sbt clean package
-```
+sbt clean 
 
+sbt compile
+
+sbt test
+
+```
+### Setting up using Intellij
+I used Intellij for this project. Below are the steps.
+1. **Install IntelliJ IDEA**
+    - Download and install IntelliJ IDEA from [here](https://www.jetbrains.com/idea/download/)
+    - Install the Scala plugin:
+        - Go to `Settings/Preferences → Plugins`
+        - Search for "Scala" and install
+
+2. **Import Project**
+3. **Configure SDK for project**
+- Right-click project in project explorer → Module Settings
+- Project Settings → Project → Set SDK to Java 8+ (or later)
+- Project Settings → Global Libraries → Add Scala SDK, and apache spark
 
 # Design Considerations for project
 1. RDD-based Implementation:
@@ -79,13 +92,33 @@ SparkConfig created for resource config, memory management, performance tuning, 
 
 
 ## Unit and Integration Testing
-Tests were written using ScalaTest
+Tests were written using ScalaTest. Unit tests and integration test are covered.
 
+
+### Unit Tests
+
+1. Duplicated Detection Test
+- Test `removeDuplicatedDetection()` method to ensure there are no
+duplicated items based on detection_old.
+2. Top X items Processing for Normal Data
+- Test `processTopItemsRDD()` method to ensure process will count top items
+based on TopX by location and rank it by its frequency.
+3. Top X items processing skewed data
+    - Test `processSkewedTopItems()` method to ensure process will handle skewed data before counting the top items
+      based on TopX by location and rank it by its frequency.
+
+
+
+[Test result generated for unit tests](src/test/resources/ComputeTopItemsTestResult.html)
+![img.png](resources/unitests.png)
+
+### Integration Tests
+The intgretation test ensures that the end to end process is working without any issues.
+
+[Test result generated for Integration test](src/test/resources/IntegrationTestResult)
+![](resources/integrationtest.png)
 
 ## Data Architecture Design
-
-![img_1.png](img_1.png)
-
 
 Given the scenario of each row in Parquet File 1 being produced by an upstream
 producer and that the message rate is 1000 message per second, and the messages produced are consumed by downstream OLAP workloads for joining etc,
@@ -94,13 +127,73 @@ it suggests a high ingestion rate.
 
 
 ### Proposed Architecture
+![img_1.png](resources/img_1.png)
 
-### Process
+### Assumptions
+1. Front end applications will utilise real-time data more, while OLAP will use cold data
+2. Data Retention:
+- Hot Storage: 24 hours
+- Cold Storage: 90 days
+3. Response time for queries is acceptable as long as it is < 100ms latency
+
+### Tech Stack
+**Tech**
+- Kafka
+- Apache Spark Streaming
+- Apache Spark Batch processing
+- Google Cloud Platform
+- Spring boot for microservices
+- Apache Druid
+
+**Storage**
+- Redis for hot data
+- Google cloud storage for hot/cold data
+
+### Design and Justification
+#### Data Source
+
+- The data source will be the **video cameras** across the different locations. Throughput will be 1000 message per second.
+
+#### Data Ingestion
+
+- **Apache Kafka**
+  - Use Kafka for handling 1000 messages/sec with partitioning
+  - Kafka is able to handle high throughput, which in our case is 1000 messages/second. 
+  - It is also scalable with its partitioning capabilities and it allows data to distribute data quickly
+  across multiple servers if needed. This also means that it is low in latency.
+
+#### Stream Processing
+- ** Apache Spark Streaming **
+  - Real-time data processing which allows insights from data and make decision or take action based on
+  real-time information
+  - It also allows event monitoring
+  - Fast and integrates well with various data sources
+  
+#### Storage
+** Hot Data**
+- Google Cloud Storage (GCS)
+
+** Cold Data **
+- Google Cloud Storage (GCS)
+
+#### Processing
+
+#### Serving
+
+**Apache Druid**
+- Optimised for OLAP workloads
+- Handles high concurrency 
+
+**Spring Boot**
 
 ### Considerations
 1. Scalability
 2. Reliability
-3. 
+3. Performance
+4. Cost
+5. Security
+6. Monitoring
+   - 
 
 ### Questions
 1. Budget Constraints for services such as cloud
@@ -114,6 +207,6 @@ it suggests a high ingestion rate.
 5. Expected processing and response time
 6. Expected data and user load
 
-### Tech Steck 
-1. Tech
-2. Storage
+
+# Improvements
+Following are considerations made but not implemented:
