@@ -150,6 +150,9 @@ it suggests a high ingestion rate.
 - Google cloud storage for hot/cold data
 
 ### Design and Justification
+
+#### Google Cloud Platform
+
 #### Data Source
 
 - The data source will be the **video cameras** across the different locations. Throughput will be 1000 message per second.
@@ -157,7 +160,7 @@ it suggests a high ingestion rate.
 #### Data Ingestion
 
 - **Apache Kafka**
-  - Use Kafka for handling 1000 messages/sec with partitioning
+  - Use Kafka for processing 1000 messages/sec 
   - Kafka is able to handle high throughput, which in our case is 1000 messages/second. 
   - It is also scalable with its partitioning capabilities and it allows data to distribute data quickly
   across multiple servers if needed. This also means that it is low in latency.
@@ -167,16 +170,29 @@ it suggests a high ingestion rate.
   - Real-time data processing which allows insights from data and make decision or take action based on
   real-time information
   - It also allows event monitoring
-  - Fast and integrates well with various data sources
+  - Fast and integrates well with various data sources, including Kafka
   
 #### Storage
-** Hot Data**
+**Hot Data**
+- Redis
+  - Redis provides caching capabilities, which means it is fast in both writes and reads
+  - In-memory data storage, which is also fast
+  - Low latency
 - Google Cloud Storage (GCS)
+  - Since GCP is used, GCS is ideal to allow easy integration with GCP
+  - GCS provides scalable storage for both hot and cold data
+  - Scalable
 
-** Cold Data **
+**Cold Data**
 - Google Cloud Storage (GCS)
+  - Since GCP is used, GCS is ideal to allow easy integration with GCP
+  - GCS provides scalable storage for both hot and cold data
+  - Cost-effective for long term storage, and they offer different tiers of cold data (30-90 days)
+  - Scalable
 
 #### Processing
+**Apache Spark Batch Processing**
+-  ETL workflows, aggregations, and ML model training using historical data.
 
 #### Serving
 
@@ -185,15 +201,51 @@ it suggests a high ingestion rate.
 - Handles high concurrency 
 
 **Spring Boot**
+- Spring boot allows us to create microservices for web and mobile applications easily
+- It also promotes modularity and loose coupling, which also promotes independent deployment
+- It integrates with many tech stacks, hence it is flexible
+- Scalable and Maintainable 
 
 ### Considerations
+
+Below are factors taken into consideration when deciding on the tools used:
+
 1. Scalability
+
+    Scalability is important to keep system fault-tolerant especially when it comes to handling 
+huge data volumes, user traffic or load. Horizontal and vertical scaling of data storage is important 
+to ensure system is scalable.
+
+
 2. Reliability
-3. Performance
-4. Cost
-5. Security
-6. Monitoring
-   - 
+
+    Reliability is also important to keep system fault-tolerant and to prevent any possible data loss.
+Hence, backup/disaster recovery is an important factor.
+
+
+4. Performance
+    Caching can significantly improve performance and efficiency of the system as it allows fast
+   retrievals such as in-memory storage, it also reduces the load on databases.
+   Hence,with caching, the system can be faster and handle more requests.
+- Partionining, indexing and query optimisation. Effective use of these functions can 
+improve performance and efficiency and reduce latency.
+
+5. Cost 
+
+   Data access can be very expensive, hence it is important to consider storage and query costs, 
+   and tools & services such as cloud storage.
+
+6. Security
+
+    Data breaches can be severe, hence it is important to consider security features 
+such as encryption, authentication and authorisation (i.e. Access Control)
+
+7. Monitoring
+
+   - Monitoring helps to identify issues and anomalies before and keep system fault-tolerant
+   - It also helps to track unauthorised access, if any
+   - It can also provide insights to optimise load, performance and cost
+   
 
 ### Questions
 1. Budget Constraints for services such as cloud
@@ -210,3 +262,6 @@ it suggests a high ingestion rate.
 
 # Improvements
 Following are considerations made but not implemented:
+1. Better joining approach or algorithms
+2. Implement caching
+3. Better modularity design to promote reusability of code and best practices
